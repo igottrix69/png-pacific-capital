@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pacific Capital — Cocoa Operations &amp; Export Management System</title>
+<meta name="description" content="PNG Pacific Capital — Enterprise Cocoa Operations & Export Management System">
+<link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-theme="dark">
+
+<!-- ══════════════ LOGIN WALL ══════════════ -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-bg-orbs"><span></span><span></span><span></span></div>
+  <div class="login-card glass">
+    <img src="assets/logo.jpg" alt="PNG Pacific Capital" class="login-logo">
+    <h1 class="login-title">PACIFIC CAPITAL</h1>
+    <p class="login-sub">Cocoa Operations &amp;<br>Export Management System</p>
+    <div class="login-divider"><span>PIN ACCESS</span></div>
+    <div id="pinDots" class="pin-dots">
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+    </div>
+    <div id="pinPlain" class="pin-plain hidden"></div>
+    <div id="pinMsg" class="pin-msg"></div>
+    <div class="pin-pad">
+      <button class="pin-key" data-key="1">1</button>
+      <button class="pin-key" data-key="2">2</button>
+      <button class="pin-key" data-key="3">3</button>
+      <button class="pin-key" data-key="4">4</button>
+      <button class="pin-key" data-key="5">5</button>
+      <button class="pin-key" data-key="6">6</button>
+      <button class="pin-key" data-key="7">7</button>
+      <button class="pin-key" data-key="8">8</button>
+      <button class="pin-key" data-key="9">9</button>
+      <button class="pin-key pin-aux" id="pinShowBtn" title="Show / hide PIN">👁</button>
+      <button class="pin-key" data-key="0">0</button>
+      <button class="pin-key pin-aux" id="pinBackBtn" title="Backspace">⌫</button>
+    </div>
+    <button id="forgotPinBtn" class="login-forgot">Forgot PIN?</button>
+    <p class="login-footer">Jarrod Hulo · Managing Director<br>Papua New Guinea · Secure Session</p>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div id="app" class="app hidden">
+
+  <header class="topbar glass">
+    <button id="menuBtn" class="icon-btn menu-btn" title="Menu">☰</button>
+    <a id="homeLogo" class="brand" title="Dashboard Home">
+      <img src="assets/logo.jpg" alt="PNG Pacific Capital">
+      <div class="brand-text">
+        <strong>PACIFIC CAPITAL</strong>
+        <span>Cocoa Operations &amp; Export Management</span>
+      </div>
+    </a>
+
+    <div class="topbar-search">
+      <span class="search-ico">🔍</span>
+      <input id="globalSearch" type="text" placeholder="Search suppliers, shipments, customers, assets…" autocomplete="off">
+      <div id="searchResults" class="search-results hidden"></div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="status-pills">
+        <span class="pill pill-online"><i></i>Online</span>
+        <span class="pill pill-active"><i></i>System Active</span>
+      </div>
+      <button id="themeBtn" class="icon-btn" title="Dark / Light mode">🌙</button>
+      <div class="notif-wrap">
+        <button id="notifBtn" class="icon-btn" title="Notifications">🔔<span id="notifBadge" class="badge hidden">0</span></button>
+        <div id="notifPanel" class="notif-panel glass hidden"></div>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings / Administration">⚙️</button>
+      <div class="user-chip" id="userChip" title="User profile">
+        <div class="avatar">JH</div>
+        <div class="user-meta">
+          <strong>Jarrod Hulo</strong>
+          <span>Managing Director</span>
+        </div>
+      </div>
+      <button id="logoutBtn" class="icon-btn" title="Logout">⏻</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav id="sidebar" class="sidebar glass">
+      <button class="nav-item active" data-view="dashboard"><span class="nav-ico">🏠</span><span class="nav-label">Dashboard Home</span></button>
+      <button class="nav-item" data-view="purchasing"><span class="nav-ico">🌱</span><span class="nav-label">Cocoa Purchasing</span></button>
+      <button class="nav-item" data-view="inventory"><span class="nav-ico">📦</span><span class="nav-label">Inventory</span></button>
+      <button class="nav-item" data-view="exports"><span class="nav-ico">🚢</span><span class="nav-label">Exports</span></button>
+      <button class="nav-item" data-view="finance"><span class="nav-ico">💰</span><span class="nav-label">Finance</span></button>
+      <button class="nav-item" data-view="cash"><span class="nav-ico">🏦</span><span class="nav-label">Cash Transactions</span></button>
+      <button class="nav-item" data-view="assets"><span class="nav-ico">🚜</span><span class="nav-label">Assets</span></button>
+      <button class="nav-item" data-view="fleet"><span class="nav-ico">🚛</span><span class="nav-label">Fleet Management</span></button>
+      <button class="nav-item" data-view="warehouses"><span class="nav-ico">🏭</span><span class="nav-label">Warehouses</span></button>
+      <button class="nav-item" data-view="suppliers"><span class="nav-ico">👥</span><span class="nav-label">Suppliers</span></button>
+      <button class="nav-item" data-view="customers"><span class="nav-ico">🤝</span><span class="nav-label">Customers</span></button>
+      <button class="nav-item" data-view="contracts"><span class="nav-ico">📑</span><span class="nav-label">Contracts</span></button>
+      <button class="nav-item" data-view="analytics"><span class="nav-ico">📈</span><span class="nav-label">Analytics</span></button>
+      <button class="nav-item" data-view="reports"><span class="nav-ico">📊</span><span class="nav-label">Reports</span></button>
+      <button class="nav-item" data-view="admin"><span class="nav-ico">⚙️</span><span class="nav-label">Administration</span></button>
+      <div class="sidebar-foot">
+        <span>PNGPC OS v1.0</span>
+      </div>
+    </nav>
+    <div id="sidebarScrim" class="sidebar-scrim hidden"></div>
+
+    <main id="view" class="view"></main>
+  </div>
+</div>
+
+<!-- modal + toast roots -->
+<div id="modalRoot" class="modal-root hidden">
+  <div class="modal-scrim"></div>
+  <div class="modal glass">
+    <div class="modal-head"><h3 id="modalTitle"></h3><button id="modalClose" class="icon-btn">✕</button></div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+<div id="toastRoot" class="toast-root"></div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
