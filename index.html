@@ -3,13 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Content-Security-Policy: defence-in-depth against XSS / supply-chain injection.
+     'unsafe-inline' is still required for the inline on* handlers and style="" attributes
+     used throughout the UI; the real XSS fix is output-escaping in app.js. connect-src 'self'
+     blocks data exfiltration to attacker origins, and object/base/frame rules block common
+     escalation. Headers are also set server-side (vercel.json / serve.js) which take precedence. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Pacific Capital — Cocoa Operations &amp; Export Management System</title>
 <meta name="description" content="PNG Pacific Capital — Enterprise Cocoa Operations & Export Management System">
 <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body data-theme="dark">

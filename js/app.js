@@ -7,6 +7,12 @@
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
+/* numeric input validation: returns the number if finite & in range, else null */
+function numIn(sel, min, max) {
+  const n = Number($(sel).value);
+  return (Number.isFinite(n) && n >= min && n <= max) ? n : null;
+}
+
 const S = {
   view: 'dashboard', charts: [], pages: {}, pin: '', showPin: false,
   fails: 0, lockUntil: 0, purchTrend: 'M', lastActivity: Date.now(), timer: null,
@@ -67,7 +73,11 @@ function grad(id, color) {
 function toast(msg, kind = 'good') {
   const el = document.createElement('div');
   el.className = 'toast t-' + kind;
-  el.innerHTML = (kind === 'good' ? '✅' : kind === 'bad' ? '⛔' : 'ℹ️') + '<span>' + msg + '</span>';
+  // msg may contain user-entered data (e.g. asset names) — never build it via innerHTML.
+  el.textContent = (kind === 'good' ? '✅ ' : kind === 'bad' ? '⛔ ' : 'ℹ️ ');
+  const span = document.createElement('span');
+  span.textContent = msg;
+  el.appendChild(span);
   $('#toastRoot').appendChild(el);
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 3400);
 }
@@ -441,8 +451,8 @@ VIEWS.purchasing = {
       const loc = $('#fPloc').value, ty = $('#fPtype').value, pd = $('#fPpaid').value;
       return DB.purchases.slice().reverse()
         .filter(p => (!q || (supplierById(p.supplier).name + p.id).toLowerCase().includes(q)) && (!loc || p.buyingPoint === loc) && (!ty || p.beanType === ty) && (pd === '' || String(p.paid ? 1 : 0) === pd))
-        .map(p => `<tr><td class="t-strong">${p.id}</td><td>${fmtDate(p.date)}</td><td>${esc(supplierById(p.supplier).name)}</td><td>${p.buyingPoint}<br><span class="t-muted" style="font-size:11px">${p.province}</span></td>
-          <td>${p.beanType.replace(' Bean', '')}</td><td>${p.grade}</td><td class="num">${p.moisture}</td><td class="num t-strong">${fmtKg(p.kg)}</td><td class="num">${p.pricePerKg.toFixed(2)}</td><td class="num t-strong">${money(p.total)}</td>
+        .map(p => `<tr><td class="t-strong">${esc(p.id)}</td><td>${fmtDate(p.date)}</td><td>${esc(supplierById(p.supplier).name)}</td><td>${esc(p.buyingPoint)}<br><span class="t-muted" style="font-size:11px">${esc(p.province)}</span></td>
+          <td>${esc(p.beanType.replace(' Bean', ''))}</td><td>${esc(p.grade)}</td><td class="num">${p.moisture}</td><td class="num t-strong">${fmtKg(p.kg)}</td><td class="num">${p.pricePerKg.toFixed(2)}</td><td class="num t-strong">${money(p.total)}</td>
           <td>${p.paid ? statusChip('Paid') : statusChip('Pending')}</td>
           <td>${p.paid ? '' : `<button class="btn btn-sm" onclick="App.payPurchase('${p.id}')">Pay</button>`}</td></tr>`);
     };
@@ -473,7 +483,7 @@ VIEWS.inventory = {
             const s = whStock(w.id);
             const u = (s.total / w.capacityKg) * 100;
             const cls = u > DB.settings.capacityWarnPct ? 'b-bad' : u > 70 ? 'b-warn' : '';
-            return `<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><b>${w.name}</b><span class="t-muted">${fmtT(s.total)} / ${fmtT(w.capacityKg)} · ${u.toFixed(0)}%</span></div>
+            return `<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><b>${esc(w.name)}</b><span class="t-muted">${fmtT(s.total)} / ${fmtT(w.capacityKg)} · ${u.toFixed(0)}%</span></div>
               <div class="bar ${cls}"><i style="width:${Math.min(100, u)}%"></i></div></div>`;
           }).join('')}
         </div>
@@ -482,7 +492,7 @@ VIEWS.inventory = {
         <div class="card-title">Inventory Movement Register</div>
         <div class="table-tools">
           <select id="fMty"><option value="">All movement types</option><option>Received</option><option>Transferred</option><option>Exported</option><option>Damaged</option><option>Adjustment</option><option>Processed</option></select>
-          <select id="fMwh"><option value="">All warehouses</option>${DB.warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('')}</select>
+          <select id="fMwh"><option value="">All warehouses</option>${DB.warehouses.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}</select>
         </div>
         ${tableShell('mov', [{ label: 'Ref' }, { label: 'Date' }, { label: 'Type' }, { label: 'Warehouse' }, { label: 'Bean' }, { label: 'Qty', num: 1 }, { label: 'Linked / Note' }])}
       </div>`;
@@ -502,8 +512,8 @@ VIEWS.inventory = {
       const ty = $('#fMty').value, wh = $('#fMwh').value;
       return DB.movements.slice().reverse()
         .filter(m => (!ty || m.type === ty) && (!wh || m.wh === wh))
-        .map(m => `<tr><td class="t-strong">${m.id}</td><td>${fmtDate(m.date)}</td><td>${statusChip(m.type === 'Damaged' ? 'Out of Service' : m.type === 'Received' ? 'Active' : m.type)}</td>
-          <td>${warehouseById(m.wh).name}</td><td>${m.beanType.replace(' Bean', '')}</td>
+        .map(m => `<tr><td class="t-strong">${esc(m.id)}</td><td>${fmtDate(m.date)}</td><td>${statusChip(m.type === 'Damaged' ? 'Out of Service' : m.type === 'Received' ? 'Active' : m.type)}</td>
+          <td>${esc(warehouseById(m.wh).name)}</td><td>${esc(m.beanType.replace(' Bean', ''))}</td>
           <td class="num ${m.deltaKg >= 0 ? 't-good' : 't-bad'}">${m.deltaKg >= 0 ? '+' : ''}${fmtKg(m.deltaKg)}</td>
           <td class="t-muted">${esc(m.ref)} ${esc(m.note)}</td></tr>`);
     };
@@ -523,8 +533,8 @@ VIEWS.warehouses = {
           const u = (s.total / w.capacityKg) * 100;
           const val = s['Dry Bean'] * c + s['Fermented Bean'] * c * 1.08 + s['Export Ready'] * c * 1.15 + s['Wet Bean'] * c * 0.3;
           return `<div class="card wh-card">
-            <div class="card-title">${w.name} ${u > DB.settings.capacityWarnPct ? statusChip('Overdue').replace('Overdue', 'OVER CAPACITY') : statusChip(w.maintenance)}</div>
-            <div class="wh-mgr">👤 ${w.manager} · ${w.province}</div>
+            <div class="card-title">${esc(w.name)} ${u > DB.settings.capacityWarnPct ? statusChip('Overdue').replace('Overdue', 'OVER CAPACITY') : statusChip(w.maintenance)}</div>
+            <div class="wh-mgr">👤 ${esc(w.manager)} · ${esc(w.province)}</div>
             <div class="mini-row">
               <div class="mini-stat"><b>${fmtT(s.total)}</b><span>Current stock</span></div>
               <div class="mini-stat"><b>${fmtT(w.capacityKg)}</b><span>Capacity</span></div>
@@ -586,8 +596,8 @@ VIEWS.exports = {
     const rows = () => {
       const st = $('#fSst').value;
       return DB.shipments.slice().reverse().filter(s => !st || s.status === st).map(s => `<tr>
-        <td class="t-strong">${s.id}</td><td>${esc(s.container)}</td><td>${esc(customerById(s.customer).name)}</td>
-        <td>${s.destination}<br><span class="t-muted" style="font-size:11px">${s.port}</span></td><td>${esc(s.vessel)}</td>
+        <td class="t-strong">${esc(s.id)}</td><td>${esc(s.container)}</td><td>${esc(customerById(s.customer).name)}</td>
+        <td>${esc(s.destination)}<br><span class="t-muted" style="font-size:11px">${esc(s.port)}</span></td><td>${esc(s.vessel)}</td>
         <td>${fmtDate(s.etd)}</td><td>${fmtDate(s.eta)}</td><td class="num t-strong">${s.tonnes}</td><td class="num t-strong">${money(s.fob)}</td>
         <td>${statusChip(s.status)}${s.paid ? ' ' + statusChip('Paid') : ''}</td>
         <td style="white-space:nowrap">${s.status !== 'Completed' ? `<button class="btn btn-sm" onclick="App.advanceShipment('${s.id}')">Advance ➜</button>` : ''}
@@ -639,7 +649,7 @@ VIEWS.suppliers = {
           <div class="card-title">🏆 Top Supplier Leaderboard <span class="sub">by volume delivered</span></div>
           ${stats.slice(0, 6).map((s, i) => `<div class="leader-row">
             <div class="leader-rank r${i + 1}">${i + 1}</div>
-            <div class="leader-main"><div class="l-name">${esc(s.name)}</div><div class="l-sub">${s.village} · ${s.province} · ${s.deliveries} deliveries</div></div>
+            <div class="leader-main"><div class="l-name">${esc(s.name)}</div><div class="l-sub">${esc(s.village)} · ${esc(s.province)} · ${s.deliveries} deliveries</div></div>
             <div style="text-align:right"><div class="leader-val">${fmtT(s.kg)}</div><div class="t-muted" style="font-size:11px">${kAbbr(s.val)}</div></div>
           </div>`).join('')}
         </div>
@@ -668,8 +678,8 @@ VIEWS.suppliers = {
     const rows = () => {
       const q = ($('#fSq').value || '').toLowerCase();
       return supplierStats().filter(s => !q || (s.name + s.village + s.province).toLowerCase().includes(q))
-        .map(s => `<tr><td class="t-strong">${s.id}</td><td class="t-strong">${esc(s.name)}</td><td>${s.village}<br><span class="t-muted" style="font-size:11px">${s.province}</span></td>
-        <td>${s.phone}</td><td class="t-muted" style="font-size:11px">${esc(s.bank)}</td>
+        .map(s => `<tr><td class="t-strong">${esc(s.id)}</td><td class="t-strong">${esc(s.name)}</td><td>${esc(s.village)}<br><span class="t-muted" style="font-size:11px">${esc(s.province)}</span></td>
+        <td>${esc(s.phone)}</td><td class="t-muted" style="font-size:11px">${esc(s.bank)}</td>
         <td class="num">${s.deliveries}</td><td class="num t-strong">${fmtT(s.kg)}</td><td class="num">${kAbbr(s.val)}</td>
         <td class="num">${s.quality ? s.quality.toFixed(0) + '<span class="t-muted">/100</span>' : '—'}</td>
         <td class="num ${s.unpaid ? 't-warn' : ''}">${s.unpaid ? money(s.unpaid) : '—'}</td>
@@ -692,7 +702,7 @@ VIEWS.customers = {
           <div class="card-title">💎 Revenue Leaderboard</div>
           ${cs.filter(c => c.revenue > 0).slice(0, 6).map((c, i) => `<div class="leader-row">
             <div class="leader-rank r${i + 1}">${i + 1}</div>
-            <div class="leader-main"><div class="l-name">${esc(c.name)}</div><div class="l-sub">${c.country} · ${c.shipments} shipments · ${c.tonnes.toFixed(0)} t</div></div>
+            <div class="leader-main"><div class="l-name">${esc(c.name)}</div><div class="l-sub">${esc(c.country)} · ${c.shipments} shipments · ${c.tonnes.toFixed(0)} t</div></div>
             <div class="leader-val">${kAbbr(c.revenue)}</div>
           </div>`).join('')}
         </div>
@@ -710,8 +720,8 @@ VIEWS.customers = {
       data: { labels: cs.map(c => c.name), datasets: [{ data: cs.map(c => c.revenue), backgroundColor: ['#1b88ff', '#19c3e6', '#22c55e', '#f5a623', '#8b5cf6', '#ef4444', '#14b8a6', '#eab308', '#64748b'], borderWidth: 0 }] },
       options: { plugins: { legend: { position: 'right' } } },
     });
-    bindTable('cus', () => customerStats().map(c => `<tr><td class="t-strong">${c.id}</td><td class="t-strong">${esc(c.name)}</td><td>${c.country}</td>
-      <td>${esc(c.contact)}<br><span class="t-muted" style="font-size:11px">${esc(c.email)}</span></td><td>${c.type}</td>
+    bindTable('cus', () => customerStats().map(c => `<tr><td class="t-strong">${esc(c.id)}</td><td class="t-strong">${esc(c.name)}</td><td>${esc(c.country)}</td>
+      <td>${esc(c.contact)}<br><span class="t-muted" style="font-size:11px">${esc(c.email)}</span></td><td>${esc(c.type)}</td>
       <td class="num">${c.activeContracts}</td><td class="num">${c.shipments}</td><td class="num">${c.tonnes.toFixed(0)} t</td><td class="num t-strong">${money(c.revenue)}</td>
       <td><button class="btn btn-sm" onclick="App.customerProfile('${c.id}')">History</button></td></tr>`), 10);
   },
@@ -729,7 +739,7 @@ VIEWS.contracts = {
         const barCls = cs.expired && cs.remaining > 0 ? 'b-bad' : cs.pct >= 100 ? 'b-good' : !cs.expired && cs.daysLeft <= 45 && cs.remaining > 0 ? 'b-warn' : '';
         return `<div class="card contract-card">
           <div class="cc-head">
-            <div><div class="cc-num">${c.number}</div><div class="cc-cust">${esc(cust.name)} · ${cust.country}</div></div>
+            <div><div class="cc-num">${esc(c.number)}</div><div class="cc-cust">${esc(cust.name)} · ${esc(cust.country)}</div></div>
             ${cs.expired ? (cs.remaining > 0 ? statusChip('Overdue').replace('Overdue', 'EXPIRED — SHORT') : statusChip('Completed')) : cs.daysLeft <= 45 && cs.remaining > 0 ? statusChip('Pending').replace('Pending', cs.daysLeft + 'd LEFT') : statusChip('Active')}
           </div>
           <div class="mini-row" style="margin-bottom:11px">
@@ -784,7 +794,7 @@ VIEWS.finance = {
           <div class="fs-row"><span>Cocoa bean purchases</span><span class="num">(${money(cogs)})</span></div>
           <div class="fs-row total"><span>Gross profit</span><span class="num ${gp >= 0 ? 't-good' : 't-bad'}">${money(gp)}</span></div>
           <div class="fs-row head"><span>Operating expenses</span><span></span></div>
-          ${Object.entries(expCats).filter(([c]) => c !== 'Supplier Payments').sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="fs-row"><span>${c}</span><span class="num">(${money(v)})</span></div>`).join('')}
+          ${Object.entries(expCats).filter(([c]) => c !== 'Supplier Payments').sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="fs-row"><span>${esc(c)}</span><span class="num">(${money(v)})</span></div>`).join('')}
           <div class="fs-row total"><span>Net profit</span><span class="num ${np >= 0 ? 't-good' : 't-bad'}">${money(np)}</span></div>
         </div>
         <div class="card fin-statement">
@@ -855,7 +865,7 @@ VIEWS.cash = {
         <div class="table-tools">
           <input id="fTq" placeholder="Search description…" style="flex:1;min-width:160px">
           <select id="fTdir"><option value="">In + out</option><option value="in">Cash in</option><option value="out">Cash out</option></select>
-          <select id="fTcat"><option value="">All categories</option>${[...new Set(DB.transactions.map(x => x.category))].sort().map(c => `<option>${c}</option>`).join('')}</select>
+          <select id="fTcat"><option value="">All categories</option>${[...new Set(DB.transactions.map(x => x.category))].sort().map(c => `<option>${esc(c)}</option>`).join('')}</select>
         </div>
         ${tableShell('txn', [{ label: 'Ref' }, { label: 'Date' }, { label: 'Category' }, { label: 'Description' }, { label: 'Entered By' }, { label: 'Approved By' }, { label: 'Receipt' }, { label: 'Amount', num: 1 }])}
       </div>`;
@@ -876,7 +886,7 @@ VIEWS.cash = {
       const q = ($('#fTq').value || '').toLowerCase(), dir = $('#fTdir').value, cat = $('#fTcat').value;
       return DB.transactions.slice().reverse()
         .filter(x => (!q || x.desc.toLowerCase().includes(q)) && (!dir || x.dir === dir) && (!cat || x.category === cat))
-        .map(x => `<tr><td class="t-strong">${x.id}</td><td>${fmtDate(x.date)}</td><td>${statusChip(x.dir === 'in' ? 'Active' : 'Pending').replace('Active', x.category).replace('Pending', x.category)}</td>
+        .map(x => `<tr><td class="t-strong">${esc(x.id)}</td><td>${fmtDate(x.date)}</td><td><span class="chip chip-${x.dir === 'in' ? 'good' : 'warn'}"><i></i>${esc(x.category)}</span></td>
           <td>${esc(x.desc)}</td><td>${esc(x.enteredBy)}</td><td>${esc(x.approvedBy)}</td><td>${x.receipt ? '📎' : '—'}</td>
           <td class="num ${x.dir === 'in' ? 't-good' : 't-bad'}">${x.dir === 'in' ? '+' : '−'}${money(x.amount)}</td></tr>`);
     };
@@ -913,7 +923,7 @@ VIEWS.assets = {
     const rows = () => {
       const cat = $('#fAcat').value, st = $('#fAst').value;
       return DB.assets.filter(a => (!cat || a.category === cat) && (!st || a.status === st))
-        .map(a => `<tr><td class="t-strong">${a.id}</td><td class="t-strong">${esc(a.name)}</td><td>${a.category}</td><td>${fmtDate(a.purchased)}</td>
+        .map(a => `<tr><td class="t-strong">${esc(a.id)}</td><td class="t-strong">${esc(a.name)}</td><td>${esc(a.category)}</td><td>${fmtDate(a.purchased)}</td>
           <td class="num">${money(a.cost)}</td><td class="num t-strong">${money(a.value)}</td><td>${esc(a.location)}</td><td>${esc(a.assignedTo)}</td>
           <td>${statusChip(a.status)}</td>
           <td><button class="btn btn-sm" onclick="App.cycleAsset('${a.id}')">Status ➜</button></td></tr>`);
@@ -965,7 +975,7 @@ VIEWS.fleet = {
       if (n <= 30) return `<span class="t-warn">${fmtDate(d)} (${n}d)</span>`;
       return fmtDate(d);
     };
-    bindTable('flt', () => DB.vehicles.map(v => `<tr><td class="t-strong">${v.rego}</td><td>${esc(v.model)}</td><td>${esc(v.driver)}</td>
+    bindTable('flt', () => DB.vehicles.map(v => `<tr><td class="t-strong">${esc(v.rego)}</td><td>${esc(v.model)}</td><td>${esc(v.driver)}</td>
       <td class="num">${v.fuelL100 || '—'}</td><td>${daysBetween(v.lastService, t) > 180 ? `<span class="t-warn">${fmtDate(v.lastService)} ⚠</span>` : fmtDate(v.lastService)}</td>
       <td>${expCell(v.insuranceExpiry)}</td><td>${expCell(v.regoExpiry)}</td><td>${expCell(v.licenceExpiry)}</td><td>${esc(v.location)}</td></tr>`), 10);
   },
@@ -1144,7 +1154,7 @@ VIEWS.admin = {
       </div>`;
   },
   init() {
-    bindTable('usr', () => DB.users.map(u => `<tr><td class="t-strong">${u.id}</td><td>${esc(u.name)}</td><td>${esc(u.role)}</td>
+    bindTable('usr', () => DB.users.map(u => `<tr><td class="t-strong">${esc(u.id)}</td><td>${esc(u.name)}</td><td>${esc(u.role)}</td>
       <td>${statusChip(u.active ? 'Active' : 'Inactive')}</td>
       <td><button class="btn btn-sm" onclick="App.toggleUser('${u.id}')">${u.active ? 'Deactivate' : 'Activate'}</button></td></tr>`), 8);
   },
@@ -1178,15 +1188,18 @@ const App = {
       });
   },
   savePurchase() {
-    const kg = +$('#pKg').value, price = +$('#pPrice').value;
-    if (!kg || !price) return toast('Weight and price are required', 'bad');
+    const kg = numIn('#pKg', 0.01, 1e7), price = numIn('#pPrice', 0.01, 1e5);
+    if (kg === null || price === null) return toast('Enter a positive weight (≤10,000,000 kg) and price (≤100,000/kg)', 'bad');
+    const moisture = numIn('#pMoist', 0, 100);
+    if (moisture === null) return toast('Moisture must be between 0 and 100%', 'bad');
     const locName = $('#pLoc').value;
     const loc = LOCATIONS.find(l => l.name === locName);
+    if (!loc) return toast('Select a valid buying point', 'bad');
     const paid = $('#pPaid').value === '1';
     const p = {
       id: uid('PUR'), date: $('#pDate').value || todayISO(), supplier: $('#pSup').value,
       buyingPoint: locName, province: loc.province, beanType: $('#pType').value, grade: $('#pGrade').value,
-      moisture: +$('#pMoist').value || 0, kg, pricePerKg: price, total: Math.round(kg * price),
+      moisture, kg, pricePerKg: price, total: Math.round(kg * price),
       paid, enteredBy: 'Jarrod Hulo',
     };
     DB.purchases.push(p);
@@ -1209,8 +1222,8 @@ const App = {
     openModal('New Export Shipment', `
       <div class="form-grid">
         <div class="field full"><label>Customer</label><select id="sCust">${DB.customers.filter(c => c.type !== 'Domestic Buyer').map(c => `<option value="${c.id}">${esc(c.name)} — ${c.country}</option>`).join('')}</select></div>
-        <div class="field"><label>Contract</label><select id="sCon"><option value="">— Spot sale —</option>${DB.contracts.map(c => `<option value="${c.number}">${c.number} (${customerById(c.customer).name.split(' ')[0]}…)</option>`).join('')}</select></div>
-        <div class="field"><label>Origin Warehouse</label><select id="sWh">${PORT_WH.map(w => `<option value="${w}">${warehouseById(w).name}</option>`).join('')}</select></div>
+        <div class="field"><label>Contract</label><select id="sCon"><option value="">— Spot sale —</option>${DB.contracts.map(c => `<option value="${esc(c.number)}">${esc(c.number)} (${esc(customerById(c.customer).name.split(' ')[0])}…)</option>`).join('')}</select></div>
+        <div class="field"><label>Origin Warehouse</label><select id="sWh">${PORT_WH.map(w => `<option value="${esc(w)}">${esc(warehouseById(w).name)}</option>`).join('')}</select></div>
         <div class="field"><label>Vessel</label><input id="sVes" value="Coral Chief"></div>
         <div class="field"><label>Container No.</label><input id="sCont" value="TEMU ${Math.floor(Math.random() * 900000 + 100000)}-${Math.floor(Math.random() * 10)}"></div>
         <div class="field"><label>ETD</label><input id="sEtd" type="date" value="${iso(addDays(NOW, 10))}"></div>
@@ -1219,7 +1232,7 @@ const App = {
         <div class="field"><label>FOB per tonne (Kina)</label><input id="sFobT" type="number" value="38000"></div>
         <div class="calc-line"><span>FOB Value</span><span id="sTotal">K 1,900,000</span></div>
       </div>
-      <div class="form-hint">Export-ready stock available: ${PORT_WH.map(w => warehouseById(w).name.split(' ')[0] + ' ' + fmtT(whStock(w)['Export Ready'])).join(' · ')}</div>
+      <div class="form-hint">Export-ready stock available: ${PORT_WH.map(w => esc(warehouseById(w).name.split(' ')[0]) + ' ' + fmtT(whStock(w)['Export Ready'])).join(' · ')}</div>
       <div class="form-actions"><button class="btn" onclick="App.closeModal()">Cancel</button><button class="btn btn-primary" onclick="App.saveShipment()">💾 Create Shipment</button></div>`,
       () => {
         const upd = () => { $('#sTotal').textContent = money((+$('#sT').value || 0) * (+$('#sFobT').value || 0)); };
@@ -1227,8 +1240,8 @@ const App = {
       });
   },
   saveShipment() {
-    const t = +$('#sT').value, fobT = +$('#sFobT').value;
-    if (!t || !fobT) return toast('Tonnes and FOB rate are required', 'bad');
+    const t = numIn('#sT', 0.01, 1e5), fobT = numIn('#sFobT', 0.01, 1e7);
+    if (t === null || fobT === null) return toast('Enter positive tonnes (≤100,000) and FOB rate', 'bad');
     const cust = customerById($('#sCust').value);
     const dest = DEST[cust.country] ? cust.country : 'Singapore';
     const s = {
@@ -1270,8 +1283,8 @@ const App = {
       <div class="form-grid">
         <div class="field"><label>Type</label><select id="mType"><option>Adjustment</option><option>Damaged</option><option>Transferred</option></select></div>
         <div class="field"><label>Date</label><input id="mDate" type="date" value="${todayISO()}"></div>
-        <div class="field"><label>Warehouse</label><select id="mWh">${DB.warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('')}</select></div>
-        <div class="field" id="mWh2Wrap" style="display:none"><label>Destination Warehouse</label><select id="mWh2">${DB.warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('')}</select></div>
+        <div class="field"><label>Warehouse</label><select id="mWh">${DB.warehouses.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}</select></div>
+        <div class="field" id="mWh2Wrap" style="display:none"><label>Destination Warehouse</label><select id="mWh2">${DB.warehouses.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}</select></div>
         <div class="field"><label>Bean Type</label><select id="mBean">${BEAN_TYPES.map(t => `<option>${t}</option>`).join('')}</select></div>
         <div class="field"><label>Quantity (kg) — use negative to deduct</label><input id="mKg" type="number" value="-100"></div>
         <div class="field full"><label>Note</label><input id="mNote" placeholder="Reason / reference"></div>
@@ -1285,8 +1298,8 @@ const App = {
       });
   },
   saveMovement() {
-    const type = $('#mType').value, kg = Math.round(+$('#mKg').value || 0);
-    if (!kg) return toast('Quantity required', 'bad');
+    const type = $('#mType').value, raw = numIn('#mKg', -1e7, 1e7), kg = raw === null ? 0 : Math.round(raw);
+    if (raw === null || kg === 0) return toast('Enter a non-zero quantity within ±10,000,000 kg', 'bad');
     const date = $('#mDate').value || todayISO(), wh = $('#mWh').value, bean = $('#mBean').value, note = $('#mNote').value;
     if (type === 'Transferred') {
       const wh2 = $('#mWh2').value;
@@ -1312,7 +1325,7 @@ const App = {
         <div class="field"><label>Category</label><select id="tCat">${cats.out.map(c => `<option>${c}</option>`).join('')}</select></div>
         <div class="field"><label>Amount (Kina)</label><input id="tAmt" type="number" min="1" value="1000"></div>
         <div class="field full"><label>Description</label><input id="tDesc" placeholder="What was this for?"></div>
-        <div class="field"><label>Approved By</label><select id="tAppr">${DB.users.filter(u => u.active).map(u => `<option>${u.name}</option>`).join('')}</select></div>
+        <div class="field"><label>Approved By</label><select id="tAppr">${DB.users.filter(u => u.active).map(u => `<option>${esc(u.name)}</option>`).join('')}</select></div>
         <div class="field"><label>Receipt Attached</label><select id="tRec"><option value="1">Yes 📎</option><option value="0">No</option></select></div>
       </div>
       <div class="form-actions"><button class="btn" onclick="App.closeModal()">Cancel</button><button class="btn btn-primary" onclick="App.saveTransaction()">💾 Save Transaction</button></div>`,
@@ -1323,8 +1336,8 @@ const App = {
       });
   },
   saveTransaction() {
-    const amt = +$('#tAmt').value;
-    if (!amt) return toast('Amount required', 'bad');
+    const amt = numIn('#tAmt', 0.01, 1e9);
+    if (amt === null) return toast('Enter a positive amount (≤1,000,000,000)', 'bad');
     DB.transactions.push({
       id: uid('TXN'), date: $('#tDate').value || todayISO(), dir: $('#tDir').value,
       category: $('#tCat').value, amount: Math.round(amt), desc: $('#tDesc').value || $('#tCat').value,
@@ -1407,7 +1420,7 @@ const App = {
         <div class="mini-stat"><b>${kAbbr(c.revenue)}</b><span>Revenue</span></div>
         <div class="mini-stat"><b>${c.activeContracts}</b><span>Active contracts</span></div>
       </div>
-      <div class="form-hint">👤 ${esc(c.contact)} · ✉️ ${esc(c.email)} · 📞 ${esc(c.phone)} · ${c.country}</div>
+      <div class="form-hint">👤 ${esc(c.contact)} · ✉️ ${esc(c.email)} · 📞 ${esc(c.phone)} · ${esc(c.country)}</div>
       <h4 style="margin:14px 0 8px;font-size:12px;letter-spacing:1px;color:var(--accent)">SHIPMENT HISTORY</h4>
       <div class="table-wrap"><table class="data"><thead><tr><th>Shipment</th><th>ETD</th><th class="num">Tonnes</th><th class="num">FOB</th><th>Status</th></tr></thead>
       <tbody>${ships.map(s => `<tr><td>${s.id}</td><td>${fmtDate(s.etd)}</td><td class="num">${s.tonnes}</td><td class="num">${money(s.fob)}</td><td>${s.status}</td></tr>`).join('') || '<tr><td colspan="5">No shipments yet</td></tr>'}</tbody></table></div>`);
@@ -1424,8 +1437,8 @@ const App = {
       <div class="form-actions"><button class="btn" onclick="App.closeModal()">Cancel</button><button class="btn btn-primary" onclick="App.saveContract()">💾 Create Contract</button></div>`);
   },
   saveContract() {
-    const vol = +$('#nKvol').value, val = +$('#nKval').value;
-    if (!vol || !val) return toast('Volume and value required', 'bad');
+    const vol = numIn('#nKvol', 0.01, 1e6), val = numIn('#nKval', 0.01, 1e12);
+    if (vol === null || val === null) return toast('Enter a positive volume and contract value', 'bad');
     const num = 'CN-' + NOW.getFullYear() + '-' + String(DB.contracts.length + 1).padStart(3, '0');
     DB.contracts.push({ number: num, customer: $('#nKcust').value, start: $('#nKstart').value, end: $('#nKend').value, volumeT: vol, valueK: val });
     audit('Created contract ' + num);
@@ -1447,9 +1460,11 @@ const App = {
   saveAsset() {
     const name = $('#nAname').value.trim();
     if (!name) return toast('Asset name required', 'bad');
+    const cost = numIn('#nAcost', 0, 1e12), value = numIn('#nAval', 0, 1e12);
+    if (cost === null || value === null) return toast('Cost and current value must be 0 or more', 'bad');
     DB.assets.push({
       id: 'AST-' + String(DB.assets.length + 1).padStart(3, '0'), name, category: $('#nAcat').value,
-      purchased: $('#nAdate').value, cost: +$('#nAcost').value || 0, value: +$('#nAval').value || 0,
+      purchased: $('#nAdate').value, cost, value,
       location: $('#nAloc').value, assignedTo: $('#nAass').value, status: 'Operational',
     });
     audit('Added asset ' + name);
@@ -1479,8 +1494,11 @@ const App = {
   saveVehicle() {
     const rego = $('#nVreg').value.trim();
     if (!rego) return toast('Registration required', 'bad');
+    if (!SAFE_ID.test(rego)) return toast('Registration may only contain letters, numbers, hyphen and underscore', 'bad');
+    const fuel = numIn('#nVfuel', 0, 200);
+    if (fuel === null) return toast('Fuel use must be between 0 and 200 L/100km', 'bad');
     DB.vehicles.push({
-      rego, model: $('#nVmod').value, driver: $('#nVdrv').value, fuelL100: +$('#nVfuel').value || 0,
+      rego, model: $('#nVmod').value, driver: $('#nVdrv').value, fuelL100: fuel,
       insuranceExpiry: $('#nVins').value, regoExpiry: $('#nVrego').value, licenceExpiry: $('#nVlic').value,
       location: $('#nVloc').value, lastService: todayISO(),
     });
@@ -1537,17 +1555,23 @@ const App = {
   },
   restore(ev) {
     const f = ev.target.files[0];
-    if (!f) return;
+    if (!f) { return; }
+    if (f.size > 8 * 1024 * 1024) { toast('Backup file too large (max 8 MB)', 'bad'); ev.target.value = ''; return; }
     const r = new FileReader();
     r.onload = () => {
       try {
         const data = JSON.parse(r.result);
-        if (!data.version || !data.purchases) throw new Error('bad file');
-        DB = data; saveDB(); applyTheme();
+        const clean = validateBackup(data); // throws on anything malformed/unsafe
+        DB = clean; saveDB(); applyTheme();
         audit('Backup restored from file');
-        toast('Backup restored'); render();
-      } catch (e) { toast('Invalid backup file', 'bad'); }
+        toast('Backup restored & validated'); render();
+      } catch (e) {
+        toast('Invalid backup file — ' + (e.message || 'rejected'), 'bad');
+      } finally {
+        ev.target.value = ''; // allow re-selecting the same file
+      }
     };
+    r.onerror = () => toast('Could not read file', 'bad');
     r.readAsText(f);
   },
   resetData() {

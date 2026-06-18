@@ -487,6 +487,55 @@ function saveDB() {
   catch (e) { console.warn('Storage full', e); }
 }
 function resetDB() { localStorage.removeItem(DB_KEY); loadDB(); }
+
+/* Validate & sanitise an imported backup before trusting it.
+   Throws on anything malformed. Record IDs are flow into onclick="" string
+   literals, where HTML-escaping does NOT prevent a break-out — so IDs must
+   match a strict safe pattern or the whole import is rejected. */
+const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const BACKUP_ARRAYS = ['users', 'warehouses', 'suppliers', 'purchases', 'movements',
+  'shipments', 'customers', 'contracts', 'assets', 'vehicles', 'transactions',
+  'loginHistory', 'audit'];
+const ID_CHECKS = {
+  purchases: 'id', movements: 'id', shipments: 'id', suppliers: 'id',
+  customers: 'id', assets: 'id', users: 'id', warehouses: 'id', vehicles: 'rego',
+};
+
+function validateBackup(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('not an object');
+  if (data.version !== 1) throw new Error('unsupported version');
+  // reject prototype-pollution keys anywhere at the top level
+  for (const k of ['__proto__', 'constructor', 'prototype']) {
+    if (Object.prototype.hasOwnProperty.call(data, k)) throw new Error('illegal key');
+  }
+  // every known collection must be an array
+  for (const key of BACKUP_ARRAYS) {
+    if (!Array.isArray(data[key])) throw new Error('missing/invalid "' + key + '"');
+  }
+  // settings must be a sane object; coerce hostile values to safe defaults
+  const s = data.settings;
+  if (!s || typeof s !== 'object' || Array.isArray(s)) throw new Error('invalid settings');
+  const clean = {
+    version: 1,
+    settings: {
+      pin: /^\d{4}$/.test(s.pin) ? s.pin : '0000',
+      theme: s.theme === 'light' ? 'light' : 'dark',
+      timeoutMin: Math.min(240, Math.max(1, Number(s.timeoutMin) || 15)),
+      lowStockPct: Math.min(60, Math.max(1, Number(s.lowStockPct) || 15)),
+      capacityWarnPct: Math.min(100, Math.max(50, Number(s.capacityWarnPct) || 90)),
+    },
+  };
+  // every record ID that ends up in an onclick handler must be a safe token
+  for (const [coll, field] of Object.entries(ID_CHECKS)) {
+    for (const row of data[coll]) {
+      if (!row || typeof row !== 'object') throw new Error('bad row in ' + coll);
+      if (!SAFE_ID.test(String(row[field]))) throw new Error('unsafe id in ' + coll);
+    }
+  }
+  // copy collections through (text fields are HTML-escaped at render time)
+  for (const key of BACKUP_ARRAYS) clean[key] = data[key];
+  return clean;
+}
 function audit(action) {
   const t = new Date();
   DB.audit.unshift({ time: iso(t) + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'), user: 'Jarrod Hulo', action });
